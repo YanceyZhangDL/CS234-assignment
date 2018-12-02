@@ -1,0 +1,8 @@
+tabular Q learning is optional practice before implementing DQN.
+
+```
+wget http://web.stanford.edu/class/cs234/assignment2/practice.zip
+wget http://web.stanford.edu/class/cs234/assignment2/practice.pdf
+wget http://web.stanford.edu/class/cs234/assignment2/assignment2.zip
+wget http://web.stanford.edu/class/cs234/assignment2/assignment2.pdf
+```
