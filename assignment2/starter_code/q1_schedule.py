@@ -34,14 +34,12 @@ class LinearSchedule(object):
         """
         ##############################################################
         ################ YOUR CODE HERE - 3-4 lines ##################
-        if t == 0:
-            self.epsilon = self.eps_begin
-        elif t == self.nsteps:
-            self.epsilon = self.eps_end
-        else:
-            self.epsilon = self.eps_begin - 0.1 * t
-        if self.epsilon <= self.eps_end:
-            self.epsilon = self.eps_end
+        # self.epsilon += 1.0 * t * (self.eps_end - self.eps_begin) / self.nsteps
+        # self.epsilon = np.max([self.epsilon, self.eps_end])
+        # print " epsilon:", self.epsilon
+
+        value = np.linspace(self.eps_begin, self.eps_end, self.nsteps+1)
+        self.epsilon = value[t] if t <= self.nsteps else self.eps_end
         ##############################################################
         ######################## END YOUR CODE ############## ########
 
@@ -84,6 +82,7 @@ class LinearExploration(LinearSchedule):
         if random.random() < self.epsilon:
             return self.env.action_space.sample()
         else:
+            print "best_action choose"
             return best_action
 
         ##############################################################

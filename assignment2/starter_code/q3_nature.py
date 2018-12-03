@@ -59,8 +59,10 @@ class NatureQN(Linear):
             layer = tf.layers.conv2d(layer, 32, [8, 8], strides=4, activation=tf.nn.relu)
             layer = tf.layers.conv2d(layer, 64, [4, 4], strides=2, activation=tf.nn.relu)
             layer = tf.layers.conv2d(layer, 64, [3, 3], strides=1, activation=tf.nn.relu)
-            layer = tf.layers.dense(tf.layers.flatten(layer), 512, activation=tf.nn.relu)
-            out = tf.layers.dense(layer, num_actions)
+            #layer = tf.layers.dense(tf.layers.flatten(layer), 512, activation=tf.nn.relu)
+            #out = tf.layers.dense(layer, num_actions)
+            layer = layers.fully_connected(tf.layers.flatten(layer), num_outputs=512)
+            out = layers.fully_connected(layer, num_outputs=num_actions, activation_fn=None)
         ##############################################################
         ######################## END YOUR CODE #######################
         return out

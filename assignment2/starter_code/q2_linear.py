@@ -114,8 +114,10 @@ class Linear(DQN):
           #                     shape=[num_actions],
           #                     initializer=tf.truncated_normal_initializer(stddev=0.1))
           # out = tf.nn.relu(tf.matmul(out, w) + b)
-          out = tf.layers.dense(tf.layers.flatten(out), num_actions,
-                                kernel_initializer=tf.truncated_normal_initializer(stddev=0.1))
+          #out = tf.layers.dense(out, num_actions,
+          #                      kernel_initializer=tf.truncated_normal_initializer(stddev=0.1))
+          out = layers.fully_connected(out, num_actions, reuse=reuse,
+                                       scope=scope, activation_fn=None)
         ##############################################################
         ######################## END YOUR CODE #######################
 
@@ -163,7 +165,7 @@ class Linear(DQN):
         target_q_weights = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=target_q_scope)
         print "q_weights", q_weights
         print "target_q_weights", target_q_weights
-        self.update_target_op = [tf.assign(tqw, qw) for qw, tqw in zip(q_weights, target_q_weights)]
+        self.update_target_op = tf.group(*[tf.assign(tqw, qw) for qw, tqw in zip(q_weights, target_q_weights)])  # *****
 
         ##############################################################
         ######################## END YOUR CODE #######################
@@ -204,8 +206,10 @@ class Linear(DQN):
         ##############################################################
         ##################### YOUR CODE HERE - 4-5 lines #######
         Q_samp = self.r + (1.0 - tf.cast(self.done_mask, tf.float32)) * self.config.gamma * tf.reduce_max(target_q, axis=1)
-        Q = tf.reduce_max(q, axis=1)
-        self.loss = tf.reduce_sum(tf.squared_difference(Q, Q_samp))
+        #Q = tf.reduce_max(q, axis=1) # select the val of true (s,a), not the max for q
+        one_hot = tf.one_hot(self.a, num_actions)  # *****
+        Q_sa = tf.reduce_sum(tf.multiply(q, one_hot), axis=1)  # *****
+        self.loss = tf.reduce_sum(tf.squared_difference(Q_sa, Q_samp))
         print "self.loss:", self.loss
         ##############################################################
         ######################## END YOUR CODE #######################
@@ -250,7 +254,8 @@ class Linear(DQN):
             grad_and_vars = [(tf.clip_by_norm(grad, self.config.clip_val), var) for grad, var in grad_and_vars]
         self.train_op = opt.apply_gradients(grads_and_vars=grad_and_vars)
         #self.train_op = opt.minimize(self.loss, var_list=var_list)
-        self.grad_norm = tf.global_norm(tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES))
+        #self.grad_norm = tf.global_norm(tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES))
+        self.grad_norm = tf.global_norm([item[0] for item in grad_and_vars])
 
         ##############################################################
         ######################## END YOUR CODE #######################

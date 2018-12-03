@@ -31,6 +31,7 @@ if __name__ == '__main__':
                         overwrite_render=config.overwrite_render)
 
     # exploration strategy
+    print "config.eps_nsteps:", config.eps_nsteps
     exp_schedule = LinearExploration(env, config.eps_begin, 
             config.eps_end, config.eps_nsteps)
 
