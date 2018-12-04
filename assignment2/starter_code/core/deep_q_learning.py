@@ -14,12 +14,12 @@ class DQN(QN):
         raise NotImplementedError
 
 
-    def get_q_values_op(self, state, scope, reuse=False):
+    #def get_q_values_op(self, state, scope, reuse=False):
+    def get_q_values_op(self, scope, reuse=False):
         """
         set Q values, of shape = (batch_size, num_actions)
         """
         raise NotImplementedError
-
 
     def add_update_target_op(self, q_scope, target_q_scope):
         """

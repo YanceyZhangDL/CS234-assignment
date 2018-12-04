@@ -39,4 +39,4 @@ class config():
     eps_begin          = 1  # 1
     eps_end            = 0.1
     eps_nsteps         = 1000000
-    learning_start     = 10000
+    learning_start     = 50000

@@ -55,10 +55,14 @@ class NatureQN(Linear):
         ##############################################################
         ################ YOUR CODE HERE - 10-15 lines ################
         layer = tf.cast(state, tf.float32)
+        print "build conv net in dqn"
         with tf.variable_scope(scope, reuse=reuse):
-            layer = tf.layers.conv2d(layer, 32, [8, 8], strides=4, activation=tf.nn.relu)
-            layer = tf.layers.conv2d(layer, 64, [4, 4], strides=2, activation=tf.nn.relu)
-            layer = tf.layers.conv2d(layer, 64, [3, 3], strides=1, activation=tf.nn.relu)
+            #layer = tf.layers.conv2d(layer, 32, [8, 8], strides=4, activation=tf.nn.relu)
+            #layer = tf.layers.conv2d(layer, 64, [4, 4], strides=2, activation=tf.nn.relu)
+            #layer = tf.layers.conv2d(layer, 64, [3, 3], strides=1, activation=tf.nn.relu)
+            layer = tf.layers.conv2d(layer, 32, [8, 8], strides=4)
+            layer = tf.layers.conv2d(layer, 64, [4, 4], strides=2)
+            layer = tf.layers.conv2d(layer, 64, [3, 3], strides=1)
             #layer = tf.layers.dense(tf.layers.flatten(layer), 512, activation=tf.nn.relu)
             #out = tf.layers.dense(layer, num_actions)
             layer = layers.fully_connected(tf.layers.flatten(layer), num_outputs=512)

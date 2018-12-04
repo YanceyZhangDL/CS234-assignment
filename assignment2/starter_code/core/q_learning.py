@@ -37,7 +37,7 @@ class QN(object):
         self.env = env
 
         # build model
-        self.grad_norm = None
+        #self.grad_norm = None
         self.build()
 
 

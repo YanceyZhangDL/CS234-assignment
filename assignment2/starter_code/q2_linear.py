@@ -252,7 +252,7 @@ class Linear(DQN):
         print "grad_and_vars:", grad_and_vars
         if self.config.grad_clip:
             grad_and_vars = [(tf.clip_by_norm(grad, self.config.clip_val), var) for grad, var in grad_and_vars]
-        self.train_op = opt.apply_gradients(grads_and_vars=grad_and_vars)
+        self.train_op = opt.apply_gradients(grad_and_vars)
         #self.train_op = opt.minimize(self.loss, var_list=var_list)
         #self.grad_norm = tf.global_norm(tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES))
         self.grad_norm = tf.global_norm([item[0] for item in grad_and_vars])
