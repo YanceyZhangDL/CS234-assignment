@@ -49,7 +49,12 @@ def build_mlp(
   '''
   #######################################################
   #########   YOUR CODE HERE - 7-20 lines.   ############
-  return # TODO
+  with tf.variable_scope(scope):
+    layer = mlp_input
+    for i in range(n_layers):
+      layer = tf.layers.dense(layer, size, activation=tf.nn.relu)
+    output = tf.layers.dense(layer, output_size, activation=output_activation)
+  return output  # TODO
   #######################################################
   #########          END YOUR CODE.          ############
 
@@ -87,6 +92,7 @@ class PG(object):
     self.discrete = isinstance(env.action_space, gym.spaces.Discrete)
     self.observation_dim = self.env.observation_space.shape[0]
     self.action_dim = self.env.action_space.n if self.discrete else self.env.action_space.shape[0]
+    print ("action dim:", self.action_dim)
   
     self.lr = self.config.learning_rate
   
@@ -109,14 +115,15 @@ class PG(object):
     """
     #######################################################
     #########   YOUR CODE HERE - 8-12 lines.   ############
-    self.observation_placeholder = # TODO
+    assert self.env.observation_space.shape[0] == self.observation_dim
+    self.observation_placeholder = tf.placeholder(tf.float32, shape=(None, self.observation_dim), name="observation")
     if self.discrete:
-      self.action_placeholder = # TODO
+      self.action_placeholder = tf.placeholder(tf.int32, shape=(None, ), name="discrite_action")
     else:
-      self.action_placeholder = # TODO
+      self.action_placeholder = tf.placeholder(tf.float32, shape=(None, self.action_dim), name="dense_action")  # ????
   
     # Define a placeholder for advantages
-    self.advantage_placeholder = # TODO
+    self.advantage_placeholder = tf.placeholder(tf.float32, shape=(None, ), name="advantage")
     #######################################################
     #########          END YOUR CODE.          ############
   
@@ -161,18 +168,87 @@ class PG(object):
             HINT: use tf.contrib.distributions.MultivariateNormalDiag
 
     """
+
+    if self.discrete:
+      print "action sparse"
+      action_logits = build_mlp(
+        self.observation_placeholder,
+        self.action_dim,
+        scope,
+        n_layers=self.config.n_layers,
+        size=self.config.layer_size#,
+        #output_activation=self.config.activation
+      )
+      self.sampled_action = tf.multinomial(action_logits, 1)  # [batch, num_classes] -> [batch, num_samples(class index)]
+      self.sampled_action = tf.reshape(self.sampled_action, [-1, ])
+      self.logprob = - tf.nn.sparse_softmax_cross_entropy_with_logits(
+        labels=self.action_placeholder,
+        logits=action_logits)
+      print "self.logprob:", self.logprob
+    else:
+      print "action dense"
+      self.action_means = build_mlp(
+        self.observation_placeholder,
+        self.action_dim,
+        scope,
+        n_layers=self.config.n_layers,
+        size=self.config.layer_size,
+        output_activation=None)
+      self.std = tf.get_variable(
+        'std',
+        shape=[1, self.action_dim],
+        dtype=tf.float32,
+        initializer=tf.zeros_initializer(),
+        trainable=True
+      )
+      self.log_std = tf.log(tf.exp(self.std) + 1.)
+      self.log_std = tf.tile(self.log_std,
+                             [tf.shape(self.action_means)[0], 1])
+      self.sampled_action = tf.random_normal((1,),
+                                             self.action_means,
+                                             self.log_std)
+      # self.sampled_action = tf.squeeze(self.sampled_action)
+      # self.sampled_action = tf.clip_by_value(self.sampled_action,
+      #                                        env.action_space.low[0],
+      #                                        env.action_space.high[0]
+      #                                        )
+      self.dist = tf.contrib.distributions.MultivariateNormalDiag(
+        self.action_means, self.log_std)
+      self.logprob = self.dist.prob(self.action_placeholder)
+      self.logprob = self.logprob
+      print "self.logprob:", self.logprob
+
     #######################################################
     #########   YOUR CODE HERE - 5-10 lines.   ############
-  
-    if self.discrete:
-      action_logits =         # TODO 
-      self.sampled_action =   # TODO 
-      self.logprob =          # TODO 
-    else:
-      action_means =          # TODO 
-      log_std =               # TODO 
-      self.sampled_action =   # TODO 
-      self.logprob =          # TODO 
+    # if self.discrete:
+    #   action_logits = build_mlp(self.observation_placeholder,
+    #                             self.action_dim,
+    #                             scope=scope,
+    #                             n_layers=self.config.n_layers,
+    #                             size=self.config.layer_size#,
+    #                             #output_activation=self.config.activation
+    #                             )       # TODO
+    #   #self.sampled_action = tf.squeeze(tf.multinomial(action_logits, self.action_dim))  # TODO
+    #   #self.sampled_action = tf.multinomial(action_logits, self.action_dim)  # TODO
+    #   self.sampled_action = tf.multinomial(action_logits, 1)
+    #   self.sampled_action = tf.reshape(self.sampled_action, [-1, ])
+    #   self.logprob = -tf.nn.sparse_softmax_cross_entropy_with_logits(
+    #     labels=self.action_placeholder,
+    #     logits=action_logits)
+    #   #self.logprob = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=tf.cast(self.sampled_action, tf.float32),
+    #   #                                                              labels=self.action_placeholder)  # TODO
+    # else:
+    #   logits = build_mlp(self.observation_placeholder,
+    #                      self.action_dim,
+    #                      scope=scope,
+    #                      n_layers=self.config.n_layers,
+    #                      size=self.config.layer_size,
+    #                      output_activation=None
+    #                      )
+    #   action_means = tf.reduce_mean(logits)  # TODO
+    #   log_std = tf.get_variable("log_std", shape=[1])         # TODO
+    #   self.sampled_action = tf.random_normal([self.config.batch_size, 1], action_means, log_std)  # TODO ???
+    #   self.logprob = tf.contrib.distributions.MultivariateNormalDiag(self.sampled_action)         # TODO ???
     #######################################################
     #########          END YOUR CODE.          ############
             
@@ -196,10 +272,9 @@ class PG(object):
 
     ######################################################
     #########   YOUR CODE HERE - 1-2 lines.   ############
-    self.loss = # TODO
+    self.loss = tf.reduce_mean(-self.logprob * tf.to_float(self.advantage_placeholder), name='loss')  # TODO
     #######################################################
     #########          END YOUR CODE.          ############
-  
   
   def add_optimizer_op(self):
     """
@@ -209,7 +284,8 @@ class PG(object):
     """
     ######################################################
     #########   YOUR CODE HERE - 1-2 lines.   ############
-    self.train_op = # TODO
+    print ("trainable variables:{}".format(tf.trainable_variables()))
+    self.train_op = tf.train.AdamOptimizer(self.lr).minimize(self.loss)  # TODO
     #######################################################
     #########          END YOUR CODE.          ############
   
@@ -219,7 +295,7 @@ class PG(object):
     Build the baseline network within the scope
 
     In this function we will build the baseline network.
-    Use build_mlp with the same parameters as the policy network to
+    Use build_mlp with the same parameters ???????? as the policy network to
     get the baseline estimate. You also have to setup a target
     placeholder and an update operation so the baseline can be trained.
     
@@ -236,11 +312,20 @@ class PG(object):
     """
     ######################################################
     #########   YOUR CODE HERE - 4-8 lines.   ############
-    self.baseline = # TODO
-    self.baseline_target_placeholder = # TODO
-    self.update_baseline_op = # TODO
+    self.baseline = build_mlp(
+      self.observation_placeholder,
+      1,
+      scope,
+      n_layers=self.config.n_layers,
+      size=self.config.layer_size)
+    self.baseline_target_placeholder = tf.placeholder(tf.float32, shape=(None, ), name='baseline_target')  # TODO
+    #baseline_loss = tf.losses.mean_squared_error(labels=self.baseline_target_placeholder, predictions=self.baseline)
+    baseline_loss = tf.losses.mean_squared_error(self.baseline_target_placeholder,
+                                        tf.squeeze(self.baseline))
+    self.update_baseline_op = tf.train.AdamOptimizer(self.lr).minimize(baseline_loss)  # TODO
     #######################################################
     #########          END YOUR CODE.          ############
+
   
   def build(self):
     """
@@ -389,7 +474,7 @@ class PG(object):
         if (done or step == self.config.max_ep_len-1):
           episode_rewards.append(episode_reward)  
           break
-        if (not num_episodes) and t == self.config.batch_size:
+        if (not num_episodes) and t == self.config.batch_size:  # this place control paths length equals 1000 exactly!!!
           break
   
       path = {"observation" : np.array(states), 
@@ -423,16 +508,35 @@ class PG(object):
     """
 
     all_returns = []
+    #print "len paths:", len(paths)
     for path in paths:
       rewards = path["reward"]
       #######################################################
       #########   YOUR CODE HERE - 5-10 lines.   ############
-      path_returns = # TODO
+      #path_returns = reduce(lambda x, y: x + y, [pow(self.config.gamma, t) * r for t, r in enumerate(rewards)])# TODO
+      # returns = reduce(lambda x, y: x + y, [pow(self.config.gamma, t) * r for t, r in enumerate(rewards)])# TODO
+      # returns = np.reshape(np.array(returns), [-1, ])
+      # #returns = [returns]
+      # print "returns -1:", returns
+      # print "return shape -1:", np.shape(returns)
+
+      returns = []
+      episode_len = len(rewards)
+      for time_step in range(episode_len):
+        tail_length = episode_len - time_step
+        gammas = np.logspace(0, tail_length, num=tail_length,
+                             base=self.config.gamma, endpoint=False)
+        return_t = np.multiply(rewards[time_step:], gammas)
+        return_t = return_t.sum()
+        returns.append(return_t)
+      #print "return shape 0:", np.shape(returns)[0]
       #######################################################
       #########          END YOUR CODE.          ############
       all_returns.append(returns)
     returns = np.concatenate(all_returns)
-  
+    #print "all returns shape:", np.shape(all_returns)
+    #print "returns shape:", np.shape(returns)
+
     return returns
   
   
@@ -461,12 +565,24 @@ class PG(object):
   
     """
     adv = returns
+
     #######################################################
     #########   YOUR CODE HERE - 5-10 lines.   ############
     if self.config.use_baseline:
       # TODO
+      baseline = self.sess.run(
+        self.baseline,
+        feed_dict={
+          self.observation_placeholder: observations
+        }
+      )
+      #print "adv shape:", np.shape(adv)
+      #print "baseline shape:", np.shape(baseline)
+      adv -= baseline.squeeze()
     if self.config.normalize_advantage:
       # TODO
+      #adv = (adv - np.average(adv)) / np.std(adv)
+      adv = (adv - adv.mean()) / (adv.std() + 1e-12)
     #######################################################
     #########          END YOUR CODE.          ############
     return adv
@@ -481,7 +597,13 @@ class PG(object):
     """
     #######################################################
     #########   YOUR CODE HERE - 1-5 lines.   ############
-    pass # TODO
+    self.sess.run(
+      [self.update_baseline_op],
+      feed_dict={
+        self.observation_placeholder: observations,
+        self.baseline_target_placeholder: returns
+      }
+    )  # TODO
     #######################################################
     #########          END YOUR CODE.          ############
   
@@ -498,7 +620,7 @@ class PG(object):
     scores_eval = []
     
     self.init_averages()
-    scores_eval = [] # list of scores computed at iteration time
+    scores_eval = []  # list of scores computed at iteration time
   
     for t in range(self.config.num_batches):
   
@@ -516,9 +638,9 @@ class PG(object):
       if self.config.use_baseline:
         self.update_baseline(returns, observations)
       self.sess.run(self.train_op, feed_dict={
-                    self.observation_placeholder : observations, 
-                    self.action_placeholder : actions, 
-                    self.advantage_placeholder : advantages})
+                    self.observation_placeholder: observations,
+                    self.action_placeholder: actions,
+                    self.advantage_placeholder: advantages})
   
       # tf stuff
       if (t % self.config.summary_freq == 0):
@@ -533,7 +655,7 @@ class PG(object):
   
       if  self.config.record and (last_record > self.config.record_freq):
         self.logger.info("Recording...")
-        last_record =0
+        last_record = 0
         self.record()
   
     self.logger.info("- Training done.")
